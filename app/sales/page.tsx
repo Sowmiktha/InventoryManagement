@@ -79,7 +79,11 @@ export default function SalesPage() {
   }, []);
 
   useEffect(() => {
-    void loadData();
+    async function loadInitialData() {
+      await loadData();
+    }
+
+    void loadInitialData();
   }, [loadData]);
 
   const matchingProducts = useMemo(() => {
@@ -95,10 +99,11 @@ export default function SalesPage() {
       .slice(0, 8);
   }, [products, search]);
 
-  const total = cart.reduce(
+  const subtotal = cart.reduce(
     (sum, item) => sum + item.product.price * item.quantity,
     0
   );
+  const total = subtotal;
 
   function addToCart(product: Product) {
     setError("");
@@ -410,8 +415,12 @@ export default function SalesPage() {
                 <option value="CARD">Card</option>
               </select>
 
-              <div className="mt-4 flex items-center justify-between text-lg font-bold">
-                <span>Total amount</span>
+              <div className="mt-4 flex items-center justify-between text-sm text-slate-600">
+                <span>Subtotal</span>
+                <span>{currency.format(subtotal)}</span>
+              </div>
+              <div className="mt-2 flex items-center justify-between text-lg font-bold">
+                <span>Total</span>
                 <span>{currency.format(total)}</span>
               </div>
               <button
