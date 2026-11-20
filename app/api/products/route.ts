@@ -15,8 +15,11 @@ export async function GET() {
         minimum_stock AS "minimumStock",
         barcode,
         created_at AS "createdAt"
-      FROM products
-      ORDER BY id DESC
+      
+FROM products
+WHERE is_active = TRUE
+ORDER BY id DESC
+
     `);
 
     const products = result.rows.map((product) => ({
@@ -125,3 +128,46 @@ export async function POST(request: Request) {
     );
   }
 } 
+
+
+export async function DELETE(request: Request) {
+  try {
+    const { id } = await request.json();
+
+    if (!Number.isInteger(id) || id <= 0) {
+      return Response.json(
+        { error: "Invalid product ID" },
+        { status: 400 }
+      );
+    }
+
+    const result = await pool.query(
+      `UPDATE products
+       SET is_active = FALSE
+       WHERE id = $1 AND is_active = TRUE
+       RETURNING id, name`,
+      [id]
+    );
+
+    if (result.rowCount === 0) {
+      return Response.json(
+        { error: "Product not found" },
+        { status: 404 }
+      );
+    }
+
+    return Response.json({
+      message: "Product removed successfully",
+      product: result.rows[0],
+    });
+  } catch (error) {
+    console.error("Delete product error:", error);
+
+    return Response.json(
+      { error: "Failed to remove product" },
+      { status: 500 }
+    );
+  }
+}
+
+
