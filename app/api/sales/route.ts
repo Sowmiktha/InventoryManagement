@@ -176,6 +176,7 @@ export async function POST(request: Request) {
       `SELECT id, name, price::text AS price, quantity
        FROM products
        WHERE id = ANY($1::int[])
+       AND is_active = TRUE
        ORDER BY id
        FOR UPDATE`,
       [productIds]
@@ -230,7 +231,9 @@ export async function POST(request: Request) {
       }>(
         `INSERT INTO sale_items
           (sale_id, product_id, product_name, quantity, price_at_sale, subtotal)
-         VALUES ($1, $2, $3, $4, $5::numeric, ($5::numeric * $4))
+         
+VALUES ($1, $2, $3, $4::integer, $5::numeric, ($5::numeric * $4::integer))
+
          RETURNING
           product_name AS "productName",
           quantity,

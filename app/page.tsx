@@ -134,6 +134,46 @@ const [historyLoading, setHistoryLoading] = useState(true);
     }
   }
 
+async function deleteProduct(id: number, name: string) {
+  const confirmed = window.confirm(
+    `Are you sure you want to delete ${name}?`
+  );
+
+  if (!confirmed) return;
+
+  try {
+    setError("");
+    setMessage("");
+
+    const response = await fetch("/api/products", {
+      method: "DELETE",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ id }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || "Could not delete product");
+    }
+
+    setProducts((previousProducts) =>
+      previousProducts.filter((product) => product.id !== id)
+    );
+
+    setMessage(`${name} deleted successfully!`);
+  } catch (err) {
+    console.error(err);
+    setError(
+      err instanceof Error
+        ? err.message
+        : "Could not delete product."
+    );
+  }
+}
+
   const lowStock = products.filter(
     (p) => p.quantity <= p.minimumStock
   ).length;
@@ -179,6 +219,14 @@ const [historyLoading, setHistoryLoading] = useState(true);
             >
               New sale
             </Link>
+
+<Link
+  href="/sales-history"
+  className="rounded-lg px-3 py-2 text-slate-600 hover:bg-slate-100 hover:text-indigo-600"
+>
+  Sales History
+</Link>
+
           </nav>
         </div>
       </header>
@@ -346,6 +394,7 @@ const [historyLoading, setHistoryLoading] = useState(true);
                   <th className="p-3">Price</th>
                   <th className="p-3">Stock</th>
                   <th className="p-3">Status</th>
+                  <th className="p-3">Actions</th>
                 </tr>
               </thead>
 
@@ -385,6 +434,18 @@ const [historyLoading, setHistoryLoading] = useState(true);
                             </span>
                           )}
                         </td>
+
+<td className="p-3">
+  
+<button
+  type="button"
+  onClick={() => deleteProduct(p.id, p.name)}
+  className="rounded-lg bg-red-600 px-3 py-2 text-white hover:bg-red-700"
+>
+  Delete
+</button>
+
+</td>
 
                       </tr>
                     ))}
