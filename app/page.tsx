@@ -3,6 +3,7 @@
 
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import Link from "next/link";
+import Restock from "./Restock";
 
 type Product = {
   id: number;
@@ -466,6 +467,12 @@ async function deleteProduct(id: number, name: string) {
             </table>
           </div>
         </section>
+        <Restock
+  onRestock={async () => {
+    await loadProducts();
+    await loadHistory();
+  }}
+/>
 
         {/* Stock Movement History goes here */}
         <section className="rounded-2xl border bg-white p-5 shadow-sm">

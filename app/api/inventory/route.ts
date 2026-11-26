@@ -34,13 +34,14 @@ export async function POST(request: Request) {
     await client.query("BEGIN");
 
     // Find and lock the product
-    const productResult = await client.query(
-      `SELECT id, name, barcode, quantity
-       FROM products
-       WHERE barcode = $1
-       FOR UPDATE`,
-      [barcode]
-    );
+   const productResult = await client.query(
+  `SELECT id, name, barcode, quantity
+   FROM products
+   WHERE barcode = $1
+   AND is_active = TRUE
+   FOR UPDATE`,
+  [barcode]
+);
 
     if (productResult.rows.length === 0) {
       await client.query("ROLLBACK");

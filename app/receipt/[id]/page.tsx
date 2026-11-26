@@ -1,6 +1,7 @@
 import Link from "next/link";
 import pool from "@/lib/db";
 import { Suspense } from "react";
+import PrintButton from "./PrintButton";
 
 type SaleItem = {
   id: number;
@@ -122,10 +123,11 @@ async function ReceiptContent({
       <div className="mt-6 text-center print:hidden">
         <Link
           href="/sales-history"
-          className="rounded-lg bg-indigo-600 px-6 py-3 text-white"
+          className="rounded-lg bg-indigo-600 px-6 py-3 text-white print:hidden"
         >
           Back to Sales History
         </Link>
+        <PrintButton />
       </div>
     </main>
   );
