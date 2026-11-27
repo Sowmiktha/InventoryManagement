@@ -2,7 +2,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { BrowserMultiFormatReader } from "@zxing/browser";
+import { BrowserMultiFormatOneDReader } from "@zxing/browser";
 
 export default function BarcodeScanner({
   onScan,
@@ -12,11 +12,18 @@ export default function BarcodeScanner({
   onClose: () => void;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const onScanRef = useRef(onScan);
+  const onCloseRef = useRef(onClose);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const reader = new BrowserMultiFormatReader();
+    onScanRef.current = onScan;
+    onCloseRef.current = onClose;
+  }, [onScan, onClose]);
+
+  useEffect(() => {
+    const reader = new BrowserMultiFormatOneDReader();
     const video = videoRef.current;
 
     let active = true;
@@ -62,8 +69,8 @@ height: { ideal: 1080 },
             if (result && active && !scanned) {
               scanned = true;
               scannerControls.stop();
-              onScan(result.getText());
-              onClose();
+              onScanRef.current(result.getText());
+              onCloseRef.current();
             }
           }
         );
@@ -95,7 +102,7 @@ height: { ideal: 1080 },
       window.clearTimeout(timer);
       stopCamera();
     };
-  }, [onScan, onClose]);
+  }, []);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
