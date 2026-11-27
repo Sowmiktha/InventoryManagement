@@ -171,3 +171,99 @@ export async function DELETE(request: Request) {
 }
 
 
+
+export async function PATCH(request: Request) {
+  try {
+    const body = await request.json();
+
+    const id = body.id;
+
+    const name =
+      typeof body.name === "string"
+        ? body.name.trim()
+        : "";
+
+    const category =
+      typeof body.category === "string"
+        ? body.category.trim()
+        : "Other";
+
+    const price = Number(body.price);
+    const minimumStock = Number(body.minimumStock);
+
+    // Validate the updated product details
+    if (
+      !Number.isSafeInteger(id) ||
+      id <= 0 ||
+      !name ||
+      name.length > 150 ||
+      category.length > 100 ||
+      body.price == null ||
+      body.price === "" ||
+      !Number.isFinite(price) ||
+      price < 0 ||
+      body.minimumStock == null ||
+      body.minimumStock === "" ||
+      !Number.isInteger(minimumStock) ||
+      minimumStock < 0 ||
+      minimumStock > 2147483647
+    ) {
+      return NextResponse.json(
+        { error: "Please enter valid product details" },
+        { status: 400 }
+      );
+    }
+
+    // Update the existing product
+    const result = await pool.query(
+      `UPDATE products
+       SET
+         name = $1,
+         category = $2,
+         price = $3,
+         minimum_stock = $4
+       WHERE id = $5 AND is_active = TRUE
+       RETURNING
+         id,
+         name,
+         category,
+         price,
+         quantity,
+         minimum_stock AS "minimumStock",
+         barcode,
+         created_at AS "createdAt"`,
+      [
+        name,
+        category || "Other",
+        price,
+        minimumStock,
+        id,
+      ]
+    );
+
+    if (result.rowCount === 0) {
+      return NextResponse.json(
+        { error: "Product not found" },
+        { status: 404 }
+      );
+    }
+
+    const product = {
+      ...result.rows[0],
+      price: Number(result.rows[0].price),
+    };
+
+    return NextResponse.json({
+      message: "Product updated successfully",
+      product,
+    });
+
+  } catch (error) {
+    console.error("Update product error:", error);
+
+    return NextResponse.json(
+      { error: "Could not update product" },
+      { status: 500 }
+    );
+  }
+}

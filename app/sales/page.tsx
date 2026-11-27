@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import BarcodeScanner from "../BarcodeScanner";
+import BarcodeUpload from "../BarcodeUpload";
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 
 type Product = {
@@ -48,6 +50,11 @@ export default function SalesPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+  const [showScanner, setShowScanner] = useState(false);
+
+const closeScanner = useCallback(() => {
+  setShowScanner(false);
+}, []);
 
   const loadData = useCallback(async () => {
     try {
@@ -138,20 +145,33 @@ export default function SalesPage() {
     setSearch("");
   }
 
-  function addScannedProduct(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const barcode = search.trim().toLowerCase();
-    const product = products.find(
-      (item) => item.barcode?.toLowerCase() === barcode
-    );
+ 
+function handleBarcodeScan(code: string) {
+  if (saving || loading) return;
 
-    if (!product) {
-      setError(`No product found for barcode "${search.trim()}".`);
-      return;
-    }
+  const barcode = code.trim().toLowerCase();
 
-    addToCart(product);
+  const product = products.find(
+    (item) =>
+      item.barcode?.trim().toLowerCase() === barcode
+  );
+
+  if (!product) {
+    setMessage("");
+    setError(`No product found for barcode "${code}".`);
+    return;
   }
+
+  addToCart(product);
+}
+
+function addScannedProduct(
+  event: FormEvent<HTMLFormElement>
+) {
+  event.preventDefault();
+  handleBarcodeScan(search);
+}
+
 
   function changeQuantity(productId: number, quantity: number) {
     const line = cart.find((item) => item.product.id === productId);
@@ -285,6 +305,29 @@ export default function SalesPage() {
                 className="w-full rounded-lg border px-4 py-3 outline-none focus:border-indigo-500"
               />
             </form>
+
+<fieldset
+  disabled={loading || saving}
+  className="mt-3 grid gap-3 sm:grid-cols-2 disabled:opacity-50"
+>
+  <button
+    type="button"
+    onClick={() => setShowScanner(true)}
+    className="w-full rounded-lg bg-slate-800 p-3 text-white hover:bg-slate-700"
+  >
+    Scan Barcode
+  </button>
+
+  <BarcodeUpload onScan={handleBarcodeScan} />
+</fieldset>
+
+{showScanner && (
+  <BarcodeScanner
+    onScan={handleBarcodeScan}
+    onClose={closeScanner}
+  />
+)}
+
 
             <div className="mt-4 divide-y">
               {loading ? (

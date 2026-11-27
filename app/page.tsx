@@ -4,6 +4,8 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import Link from "next/link";
 import Restock from "./Restock";
+import BarcodeScanner from "./BarcodeScanner";
+import BarcodeUpload from "./BarcodeUpload";
 
 type Product = {
   id: number;
@@ -34,6 +36,24 @@ const [historyLoading, setHistoryLoading] = useState(true);
 
   const [search, setSearch] = useState("");
   const [showForm, setShowForm] = useState(false);
+  const [showProductScanner, setShowProductScanner] =
+  useState(false);
+  const handleProductScan = useCallback((code: string) => {
+  setBarcode(code);
+}, []);
+
+const closeProductScanner = useCallback(() => {
+  setShowProductScanner(false);
+}, []);
+  const [editingProduct, setEditingProduct] =
+  useState<Product | null>(null);
+
+const [editName, setEditName] = useState("");
+const [editCategory, setEditCategory] = useState("");
+const [editPrice, setEditPrice] = useState("");
+const [editMinimum, setEditMinimum] = useState("");
+const [editSaving, setEditSaving] = useState(false);
+const [editError, setEditError] = useState("");
 
   const [name, setName] = useState("");
   const [category, setCategory] = useState("Electronics");
@@ -175,6 +195,75 @@ async function deleteProduct(id: number, name: string) {
   }
 }
 
+
+function openEditForm(p: Product) {
+  setEditingProduct(p);
+  setEditName(p.name);
+  setEditCategory(p.category);
+  setEditPrice(String(p.price));
+  setEditMinimum(String(p.minimumStock));
+  setEditError("");
+  setMessage("");
+}
+
+async function updateProduct(
+  e: FormEvent<HTMLFormElement>
+) {
+  e.preventDefault();
+
+  if (!editingProduct || editSaving) return;
+
+  setEditSaving(true);
+  setEditError("");
+
+  try {
+    const response = await fetch("/api/products", {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        id: editingProduct.id,
+        name: editName,
+        category: editCategory,
+        price: Number(editPrice),
+        minimumStock: Number(editMinimum),
+      }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(
+        data.error || "Could not update product"
+      );
+    }
+
+    setProducts((previous) =>
+      previous.map((p) =>
+        p.id === editingProduct.id
+          ? data.product
+          : p
+      )
+    );
+
+    setEditingProduct(null);
+    setMessage("Product updated successfully!");
+
+    await loadProducts();
+
+  } catch (err) {
+    setEditError(
+      err instanceof Error
+        ? err.message
+        : "Could not update product."
+    );
+  } finally {
+    setEditSaving(false);
+  }
+}
+
+
   const lowStock = products.filter(
     (p) => p.quantity <= p.minimumStock
   ).length;
@@ -283,6 +372,138 @@ async function deleteProduct(id: number, name: string) {
             </p>
           )}
 
+{editingProduct && (
+  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+
+    <form
+      onSubmit={updateProduct}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="edit-title"
+      className="max-h-[90vh] w-full max-w-lg space-y-4 overflow-y-auto rounded-2xl bg-white p-6 shadow-xl"
+    >
+
+      <h2 id="edit-title" className="text-2xl font-bold">
+        Edit Product
+      </h2>
+
+      <p className="text-sm text-slate-500">
+        Update the existing product details.
+      </p>
+
+      <label className="block text-sm font-medium">
+        Product Name
+
+        <input
+          required
+          maxLength={150}
+          value={editName}
+          onChange={(e) => setEditName(e.target.value)}
+          className="mt-1 w-full rounded-lg border p-3"
+        />
+      </label>
+
+      <label className="block text-sm font-medium">
+        Barcode
+
+        <input
+          value={editingProduct.barcode || ""}
+          readOnly
+          className="mt-1 w-full rounded-lg border bg-slate-100 p-3"
+        />
+      </label>
+
+      <label className="block text-sm font-medium">
+        Category
+
+        <input
+          required
+          maxLength={100}
+          value={editCategory}
+          onChange={(e) =>
+            setEditCategory(e.target.value)
+          }
+          className="mt-1 w-full rounded-lg border p-3"
+        />
+      </label>
+
+      <label className="block text-sm font-medium">
+        Price (₹)
+
+        <input
+          required
+          type="number"
+          min="0"
+          step="0.01"
+          value={editPrice}
+          onChange={(e) => setEditPrice(e.target.value)}
+          className="mt-1 w-full rounded-lg border p-3"
+        />
+      </label>
+
+      <label className="block text-sm font-medium">
+        Minimum Stock
+
+        <input
+          required
+          type="number"
+          min="0"
+          max="2147483647"
+          step="1"
+          value={editMinimum}
+          onChange={(e) =>
+            setEditMinimum(e.target.value)
+          }
+          className="mt-1 w-full rounded-lg border p-3"
+        />
+      </label>
+
+      <div className="rounded-lg bg-slate-100 p-3">
+
+        <p className="font-medium">
+          Current stock: {editingProduct.quantity} units
+        </p>
+
+        <p className="mt-1 text-xs text-slate-500">
+          Stock quantity is managed through sales
+          and automatic restocking.
+        </p>
+
+      </div>
+
+      {editError && (
+        <p className="rounded-lg bg-red-100 p-3 text-red-700">
+          {editError}
+        </p>
+      )}
+
+      <div className="grid grid-cols-2 gap-3">
+
+        <button
+          type="button"
+          disabled={editSaving}
+          onClick={() => setEditingProduct(null)}
+          className="rounded-lg border p-3 hover:bg-slate-100"
+        >
+          Cancel
+        </button>
+
+        <button
+          type="submit"
+          disabled={editSaving}
+          className="rounded-lg bg-indigo-600 p-3 text-white hover:bg-indigo-700 disabled:opacity-50"
+        >
+          {editSaving ? "Saving..." : "Save Changes"}
+        </button>
+
+      </div>
+
+    </form>
+
+  </div>
+)}
+
+
           {/* Add product form */}
           {showForm && (
             <form
@@ -309,6 +530,26 @@ async function deleteProduct(id: number, name: string) {
                   className="mt-1 block w-full rounded-lg border p-2.5"
                   placeholder="Enter product barcode"
                 />
+
+<div className="mt-2 grid gap-2 sm:grid-cols-2">
+  <button
+    type="button"
+    onClick={() => setShowProductScanner(true)}
+    className="rounded-lg bg-slate-800 p-3 text-white hover:bg-slate-700"
+  >
+    Scan Barcode
+  </button>
+
+  <BarcodeUpload onScan={handleProductScan} />
+</div>
+
+{showProductScanner && (
+  <BarcodeScanner
+    onScan={handleProductScan}
+    onClose={closeProductScanner}
+  />
+)}
+
               </label>
 
               <label className="text-sm font-medium">
@@ -394,6 +635,7 @@ async function deleteProduct(id: number, name: string) {
                   <th className="p-3">Category</th>
                   <th className="p-3">Price</th>
                   <th className="p-3">Stock</th>
+                  <th className="p-3 text-left">Minimum Stock</th>
                   <th className="p-3">Status</th>
                   <th className="p-3">Actions</th>
                 </tr>
@@ -402,7 +644,7 @@ async function deleteProduct(id: number, name: string) {
               <tbody className="divide-y">
                 {loading ? (
                   <tr>
-                    <td colSpan={6} className="p-8 text-center text-slate-500">
+                    <td colSpan={8} className="p-8 text-center text-slate-500">
                       Loading products...
                     </td>
                   </tr>
@@ -423,6 +665,7 @@ async function deleteProduct(id: number, name: string) {
                         </td>
 
                         <td className="p-3">{p.quantity}</td>
+                        <td className="p-3">{p.minimumStock}</td>
 
                         <td className="p-3">
                           {p.quantity <= p.minimumStock ? (
@@ -438,13 +681,27 @@ async function deleteProduct(id: number, name: string) {
 
 <td className="p-3">
   
-<button
-  type="button"
-  onClick={() => deleteProduct(p.id, p.name)}
-  className="rounded-lg bg-red-600 px-3 py-2 text-white hover:bg-red-700"
->
-  Delete
-</button>
+
+<div className="flex items-center gap-2">
+
+  <button
+    type="button"
+    onClick={() => openEditForm(p)}
+    className="rounded-lg bg-blue-600 px-3 py-2 text-white hover:bg-blue-700"
+  >
+    Edit
+  </button>
+
+  <button
+    type="button"
+    onClick={() => deleteProduct(p.id, p.name)}
+    className="rounded-lg bg-red-600 px-3 py-2 text-white hover:bg-red-700"
+  >
+    Delete
+  </button>
+
+</div>
+
 
 </td>
 
@@ -454,7 +711,7 @@ async function deleteProduct(id: number, name: string) {
                     {filteredProducts.length === 0 && (
                       <tr>
                         <td
-                          colSpan={6}
+                          colSpan={8}
                           className="p-8 text-center text-slate-500"
                         >
                           No products found.
